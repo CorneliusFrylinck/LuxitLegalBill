@@ -1,0 +1,520 @@
+<?php
+	session_start();
+	$_SESSION['page'] = 'bill';
+	$noLog = '';
+	$lastID;
+
+  	$conn = mysqli_connect('localhost', 'obqnffzy_admin', 'PollY@820829', 'obqnffzy_luxit');
+	//if(isset($_POST['isLogged']) {
+        $sql = "SELECT * FROM bills WHERE bill_ID='".$_COOKIE['caseNr']."'";
+        $run = mysqli_query($conn, $sql);
+        $bill = mysqli_fetch_all($run, MYSQLI_ASSOC);
+
+        $sql2 = "SELECT * FROM bill_item WHERE parent_bill='".$_COOKIE['caseNr']."' ORDER BY date ASC";
+        $run2 = mysqli_query($conn, $sql2);
+        $items = mysqli_fetch_all($run2, MYSQLI_ASSOC);
+		//print_r($items);
+
+        if(empty($bill) || !isset($bill)) {
+
+          //$sql1 = "INSERT INTO bills(bill_id,pa, dr, plain_name, def_name, division,att_for, scale, user) VALUES ('".$_COOKIE['caseNr']."','".$_COOKIE['pORa']."','".$_COOKIE['dORr']."','".$_COOKIE['pORaName']."','".$_COOKIE['dORrName']."','".$_COOKIE['division']."','".$_COOKIE['acting']."','".$_COOKIE['scale']."','".$_COOKIE['name']."')";
+          //if(!$conn->query($sql1) === TRUE){
+            //print_r("Error: " . $sql1 . "<br>" . $conn->error);
+            //$irritasie['err'] = "Error: " . $sql1 . "<br>" . $conn->error;
+          //}
+        }
+	//}
+
+  $division = strtoupper($_COOKIE['division']);
+  $caseNr = $_COOKIE['caseNr'];
+  $pORa = $_COOKIE['pORa'];
+  $dORr = $_COOKIE['dORr'];
+  $pORaName = $_COOKIE['pORaName'];
+  $dORrName = $_COOKIE['dORrName'];
+  $compName = strtoupper($_COOKIE['compName']);
+  $actingFor = strtoupper($_COOKIE['acting']);
+  $scale = strtoupper($_COOKIE['scale']);
+
+	if(!isset($_SESSION['name'])) {
+       $noLog = "WARNING: You are not logged in, therefore you are only allowed trial functionality for this website and it is assumed that you are only testing. With trial functionality you are only allowed to test the website using a maximum amount of 10 bill items";
+      header("Location: https://luxitlegalbill.co.za/index.php");
+	}
+?>
+<!DOCTYPE html>
+<html>
+
+  <?php include('header.php');?>
+
+  <script>
+  	$(document).ready(function() {
+			$('#btnCalc').click(function(event) {
+          event.preventDefault();
+          var last = $('#last').text();
+          var arr = new Array();
+          var total = 0;
+					console.log("pizza");
+    	  for(var i=1; i<=parseInt(last); i++) {
+          	var tex='#'+i;
+						var texDa = tex+'date';
+						var texIn = tex+'info';
+						var texAm = tex+'amount';
+						var texID = tex+'id';
+            var cur = parseInt($(tex).val());
+            var date = $(texDa).text();
+            var info = $(texIn).text();
+            var amount = $(texAm).text();
+            var id = $(texID).val();
+            if(Number.isInteger(cur)) {
+            	total += cur;
+							$.post('update_bill_items.php', {
+								disb: cur,
+								amount: amount,
+								date: date,
+								info: info,
+								id: id
+							}, function (data) {
+								console.log(data);
+							});
+            }
+          }
+          $('#totalDisb').text(total);
+        });
+    	/*for(var i=1; i<last; i++) {
+          var tex='#'+i;
+          arr[i] = $(tex).val();
+          $(tex).change(function() {
+            for(var i=1; i<last; i++) {
+              arr[i] = $(tex).val();
+              console.log(arr);
+              var total = 0;
+              for (var j = 0; j < arr.length; j++) {
+                  total += parseInt(arr[j]) << 0;
+                  $('#totalDisb').text(total);
+              }
+                  $('#totalDisb').text(total);
+            }
+          });
+        }
+    	var total = 0;
+              for (var j = 0; j < arr.length; j++) {
+                  total += parseInt(arr[j]) << 0;
+                  $('#totalDisb').text(total);
+              }*/
+  	});
+  </script>
+  <h3 class="redText"><?php echo $noLog;?></h3>
+  <header class="jumbotron head">
+    <div class="container">
+      <div class="row row-1">
+        <h2 class="col-sm-12">IN THE HIGH COURT OF SOUTH AFRICA</h2>
+        <h2 id="div" class="col-sm-12 under">GAUTENG DIVISION - <?php echo $division; ?></h2>
+        <h2 id="case"  class="col-sm-12 right">CASE NR: <?php echo $caseNr; ?></h2>
+        <p class="col-sm-12 left">In the matter between</p>
+        <p id="p1" class="col-sm-6 left"><?php echo $pORaName; ?></p>
+        <p id="pa" class="col-sm-6 right"><?php echo $pORa; ?></p>
+        <p class="col-sm-12 left">and</p>
+        <p id="p2" class="col-sm-6 left"><?php echo $dORrName; ?></p>
+        <p id="dr" class="col-sm-6 right"><?php echo $dORr; ?></p>
+      </div>
+    </div>
+  </header>
+  <h2 class="jumbotron memo-msg">MEMORANDUM OF FEES AND DISBURSEMENTS DUE TO <?php echo $compName; ?> ATTORNEYS, INSTRUCTING ATTORNEYS FOR <?php echo $actingFor; ?>, AS ON A SCALE BETWEEN <?php echo $scale; ?> - FOR PROFESSIONAL SERVICES RENDERED</h2>
+  <div class="tabelle jumbotron input-group">
+        <?php
+    		$totalFees = 0;
+			$count = 0;
+			foreach ($items as $key => $item) {
+						$info;
+						$amount;
+						if($item['disbursement'] != null && $item['disbursement'] >= 0) {
+							$disbursement = $item['disbursement'];
+							$totaldisb += $disbursement;
+						}else {
+							$disbursement = '';
+						}
+						if($item['info_add'] != null) {
+							if(strpos($item['information'], '#') !== false) {
+								$info = str_replace("#",$item['info_add'],$item['information']);
+							}else {
+								$info = $item['information'].$item['info_add'];
+							}
+						}else {
+							$info = $item['information'];
+						}
+						if($item['pm'] == 'pg') {
+							$amount = ((int)$item['amount']*(int)$item['per_amount']);
+						}elseif($item['pm'] == 'min') {
+							$amount = ((int)$item['amount']/60*(int)$rate);
+						}else {
+							$amount = $item['amount'];
+						}
+						$totalFees += $amount;
+						$count += 1;
+						$lastID = ( $key !== count( $items ) -1 ) ? "" : "last";
+						$dte = (strval($count) . 'date');
+						$inf = (strval($count) . 'info');
+						$amt = (strval($count) . 'amount');
+						$id = strval($count) . 'id';
+			?>
+				<div class="area input-group jumbotron">
+					<input id="<?php echo $id; ?>" name="caseNr" class="hide" type="text" value="<?php echo $item['item_id']; ?>"/>
+					<div id="<?php echo $dte; ?>" class="form-control ctrl col-md-2 border-right"><?php echo $item['date']; ?></div>
+					<div id="<?php echo $lastID; ?>" class="form-control ctrl col-sm-1 border-right"><?php echo $count;?></div>
+					<div id="<?php echo $inf; ?>" class="form-control left ctrl col-md-5 border-noleft"><?php echo $info; ?></div>
+					<div id="<?php echo $amt; ?>" class="form-control ctrl col-md-2 singledouble"><?php echo number_format((float)$amount, 2, '.', ''); ?></div>
+					<div class="col-sm-2"><input id="<?php echo $count;?>" name="de" class="form-control disb" placeholder="" value="<?php echo $disbursement; ?>"></div>
+				</div>
+        <?php }; ?>
+          <div class="area input-group jumbotron">
+            <span class="form-control ctrl col-sm-2 border-right"></span>
+            <span class="form-control ctrl col-sm-1 border-right"></span>
+            <span class="form-control ctrl col-sm-5 left border-noleft"></span>
+            <span class="form-control ctrl col-sm-2 singledouble"></span>
+            <span class="col-sm-2"></span>
+          </div>
+          <div class="area input-group jumbotron">
+            <span class="form-control ctrl col-sm-2 border-right"></span>
+            <span class="form-control ctrl col-sm-1 border-right"></span>
+            <span class="form-control ctrl col-sm-5 left border-noleft"></span>
+            <span class="form-control ctrl col-sm-2 singledouble"></span>
+            <span class="col-sm-2"></span>
+          </div>
+          <div class="area2 input-group jumbotron">
+            <span class="form-control ctrl col-sm-2 border-right"></span>
+            <span class="form-control ctrl col-sm-1 border-right"></span>
+            <span class="form-control ctrl col-sm-5 left border-noleft"><b>BALANCE BROUGHT FORWARD (A) & (B)</b></span>
+            <span class="form-control ctrl col-sm-2 singledouble"><?php echo number_format((float)$totalFees, 2, '.', ''); ?></span>
+            <span id="totalDisb" class="col-sm-2"><?php echo number_format((float)$totaldisb, 2, '.', ''); ?></span>
+          </div>
+			      <div class="container">
+			        <input id="btnCalc" name="submit1" type="submit" class="btn btn-primary center" value="Calculate Disbursements"/>
+			      </div>
+          <div class="area input-group jumbotron">
+            <span class="form-control ctrl col-sm-2 border-right"></span>
+            <span class="form-control ctrl col-sm-1 border-right"></span>
+            <span class="form-control ctrl col-sm-5 left border-noleft"></span>
+            <span class="form-control ctrl col-sm-2 singledouble"></span>
+            <span class="col-sm-2"></span>
+          </div>
+          <div class="area input-group jumbotron">
+            <span class="form-control ctrl col-sm-2 border-right"></span>
+            <span class="form-control ctrl col-sm-1 border-right"></span>
+            <span class="form-control ctrl col-sm-5 left border-noleft"></span>
+            <span class="form-control ctrl col-sm-2 singledouble"></span>
+            <span class="col-sm-2"></span>
+          </div>
+          <div class="area input-group jumbotron">
+            <span class="form-control ctrl col-sm-2 border-right"></span>
+            <span class="form-control ctrl col-sm-1 border-right"></span>
+            <span class="form-control ctrl col-sm-5 left border-noleft">MINUS TAXED OFF</span>
+            <span class="form-control ctrl col-sm-2 singledouble bottomdouble"></span>
+            <span class="col-sm-2 bottomdouble"></span>
+          </div>
+          <div class="area input-group jumbotron">
+            <span class="form-control ctrl col-sm-2 border-right"></span>
+            <span class="form-control ctrl col-sm-1 border-right"></span>
+            <span class="form-control ctrl col-sm-5 left border-noleft"></span>
+            <span class="form-control ctrl col-sm-2 singledouble"></span>
+            <span class="col-sm-2"></span>
+          </div>
+          <div class="area input-group jumbotron">
+            <span class="form-control ctrl col-sm-2 border-right"></span>
+            <span class="form-control ctrl col-sm-1 border-right"></span>
+            <span class="form-control ctrl col-sm-5 left border-noleft"></span>
+            <span class="form-control ctrl col-sm-2 singledouble"></span>
+            <span class="col-sm-2"></span>
+          </div>
+          <div class="area input-group jumbotron">
+            <span class="form-control ctrl col-sm-2 border-right"></span>
+            <span class="form-control ctrl col-sm-1 border-right"></span>
+            <span class="form-control ctrl col-sm-5 left border-noleft"><b>SUB TOTAL</b></span>
+            <span class="form-control ctrl col-sm-2 singledouble"></span>
+            <span class="col-sm-2"></span>
+          </div>
+          <div class="area input-group jumbotron">
+            <span class="form-control ctrl col-sm-2 border-right"></span>
+            <span class="form-control ctrl col-sm-1 border-right"></span>
+            <span class="form-control ctrl col-sm-5 left border-noleft"></span>
+            <span class="form-control ctrl col-sm-2 singledouble"></span>
+            <span class="col-sm-2"></span>
+          </div>
+          <div class="area input-group jumbotron">
+            <span class="form-control ctrl col-sm-2 border-right"></span>
+            <span class="form-control ctrl col-sm-1 border-right"></span>
+            <span class="form-control ctrl col-sm-5 left border-noleft"></span>
+            <span class="form-control ctrl col-sm-2 singledouble"></span>
+            <span class="col-sm-2"></span>
+          </div>
+          <div class="area input-group jumbotron">
+            <span class="form-control ctrl col-sm-2 border-right"></span>
+            <span class="form-control ctrl col-sm-1 border-right"></span>
+            <span class="form-control ctrl col-sm-5 left border-noleft">PLUS DRAWING FEE</span>
+            <span class="form-control ctrl col-sm-2 singledouble bottomdouble"></span>
+            <span class="col-sm-2 border-no"></span>
+          </div>
+          <div class="area input-group jumbotron">
+            <span class="form-control ctrl col-sm-2 border-right"></span>
+            <span class="form-control ctrl col-sm-1 border-right"></span>
+            <span class="form-control ctrl col-sm-5 left border-noleft"></span>
+            <span class="form-control ctrl col-sm-2 singledouble"></span>
+            <span class="col-sm-2"></span>
+          </div>
+          <div class="area input-group jumbotron">
+            <span class="form-control ctrl col-sm-2 border-right"></span>
+            <span class="form-control ctrl col-sm-1 border-right"></span>
+            <span class="form-control ctrl col-sm-5 left border-noleft"></span>
+            <span class="form-control ctrl col-sm-2 singledouble"></span>
+            <span class="col-sm-2"></span>
+          </div>
+          <div class="area input-group jumbotron">
+            <span class="form-control ctrl col-sm-2 border-right"></span>
+            <span class="form-control ctrl col-sm-1 border-right"></span>
+            <span class="form-control ctrl col-sm-5 left border-noleft"><b>SUB TOTAL</b></span>
+            <span class="form-control ctrl col-sm-2 singledouble"></span>
+            <span class="col-sm-2 border-no"></span>
+          </div>
+          <div class="area input-group jumbotron">
+            <span class="form-control ctrl col-sm-2 border-right"></span>
+            <span class="form-control ctrl col-sm-1 border-right"></span>
+            <span class="form-control ctrl col-sm-5 left border-noleft"></span>
+            <span class="form-control ctrl col-sm-2 singledouble"></span>
+            <span class="col-sm-2"></span>
+          </div>
+          <div class="area input-group jumbotron">
+            <span class="form-control ctrl col-sm-2 border-right"></span>
+            <span class="form-control ctrl col-sm-1 border-right"></span>
+            <span class="form-control ctrl col-sm-5 left border-noleft"></span>
+            <span class="form-control ctrl col-sm-2 singledouble"></span>
+            <span class="col-sm-2"></span>
+          </div>
+          <div class="area input-group jumbotron">
+            <span class="form-control ctrl col-sm-2 border-right"></span>
+            <span class="form-control ctrl col-sm-1 border-right"></span>
+            <span class="form-control ctrl col-sm-5 left border-noleft">PLUS DISBURSEMENTS</span>
+            <span class="form-control ctrl col-sm-2 singledouble bottomdouble"></span>
+            <span class="col-sm-2 border-no"></span>
+          </div>
+          <div class="area input-group jumbotron">
+            <span class="form-control ctrl col-sm-2 border-right"></span>
+            <span class="form-control ctrl col-sm-1 border-right"></span>
+            <span class="form-control ctrl col-sm-5 left border-noleft"></span>
+            <span class="form-control ctrl col-sm-2 singledouble"></span>
+            <span class="col-sm-2"></span>
+          </div>
+          <div class="area input-group jumbotron">
+            <span class="form-control ctrl col-sm-2 border-right"></span>
+            <span class="form-control ctrl col-sm-1 border-right"></span>
+            <span class="form-control ctrl col-sm-5 left border-noleft"></span>
+            <span class="form-control ctrl col-sm-2 singledouble"></span>
+            <span class="col-sm-2"></span>
+          </div>
+          <div class="area input-group jumbotron">
+            <span class="form-control ctrl col-sm-2 border-right"></span>
+            <span class="form-control ctrl col-sm-1 border-right"></span>
+            <span class="form-control ctrl col-sm-5 left border-noleft"><b>SUB TOTAL</b></span>
+            <span class="form-control ctrl col-sm-2 singledouble"></span>
+            <span class="col-sm-2 border-no"></span>
+          </div>
+          <div class="area input-group jumbotron">
+            <span class="form-control ctrl col-sm-2 border-right"></span>
+            <span class="form-control ctrl col-sm-1 border-right"></span>
+            <span class="form-control ctrl col-sm-5 left border-noleft"></span>
+            <span class="form-control ctrl col-sm-2 singledouble"></span>
+            <span class="col-sm-2"></span>
+          </div>
+          <div class="area input-group jumbotron">
+            <span class="form-control ctrl col-sm-2 border-right"></span>
+            <span class="form-control ctrl col-sm-1 border-right"></span>
+            <span class="form-control ctrl col-sm-5 left border-noleft"></span>
+            <span class="form-control ctrl col-sm-2 singledouble"></span>
+            <span class="col-sm-2"></span>
+          </div>
+          <div class="area input-group jumbotron">
+            <span class="form-control ctrl col-sm-2 border-right"></span>
+            <span class="form-control ctrl col-sm-1 border-right"></span>
+            <span class="form-control ctrl col-sm-5 left border-noleft">PLUS FEE ATTENDING TAXATION</span>
+            <span class="form-control ctrl col-sm-2 singledouble bottomdouble"></span>
+            <span class="col-sm-2 border-no"></span>
+          </div>
+          <div class="area input-group jumbotron">
+            <span class="form-control ctrl col-sm-2 border-right"></span>
+            <span class="form-control ctrl col-sm-1 border-right"></span>
+            <span class="form-control ctrl col-sm-5 left border-noleft"></span>
+            <span class="form-control ctrl col-sm-2 singledouble"></span>
+            <span class="col-sm-2"></span>
+          </div>
+          <div class="area input-group jumbotron">
+            <span class="form-control ctrl col-sm-2 border-right"></span>
+            <span class="form-control ctrl col-sm-1 border-right"></span>
+            <span class="form-control ctrl col-sm-5 left border-noleft"></span>
+            <span class="form-control ctrl col-sm-2 singledouble"></span>
+            <span class="col-sm-2"></span>
+          </div>
+          <div class="area input-group jumbotron">
+            <span class="form-control ctrl col-sm-2 border-right"></span>
+            <span class="form-control ctrl col-sm-1 border-right"></span>
+            <span class="form-control ctrl col-sm-5 left border-noleft"><b>SUB TOTAL</b></span>
+            <span class="form-control ctrl col-sm-2 singledouble"></span>
+            <span class="col-sm-2 border-no"></span>
+          </div>
+          <div class="area input-group jumbotron">
+            <span class="form-control ctrl col-sm-2 border-right"></span>
+            <span class="form-control ctrl col-sm-1 border-right"></span>
+            <span class="form-control ctrl col-sm-5 left border-noleft"></span>
+            <span class="form-control ctrl col-sm-2 singledouble"></span>
+            <span class="col-sm-2"></span>
+          </div>
+          <div class="area input-group jumbotron">
+            <span class="form-control ctrl col-sm-2 border-right"></span>
+            <span class="form-control ctrl col-sm-1 border-right"></span>
+            <span class="form-control ctrl col-sm-5 left border-noleft"></span>
+            <span class="form-control ctrl col-sm-2 singledouble"></span>
+            <span class="col-sm-2"></span>
+          </div>
+          <div class="area input-group jumbotron">
+            <span class="form-control ctrl col-sm-2 border-right"></span>
+            <span class="form-control ctrl col-sm-1 border-right"></span>
+            <span class="form-control ctrl col-sm-5 left border-noleft">PLUS 14% VAT ON FEES <i>before 1 April 2018</i> <b>(Subtotal on Fees R_____________)(A)</b></span>
+            <span class="form-control ctrl col-sm-2 singledouble bottomdouble"></span>
+            <span class="col-sm-2 border-no"></span>
+          </div>
+          <div class="area input-group jumbotron">
+            <span class="form-control ctrl col-sm-2 border-right"></span>
+            <span class="form-control ctrl col-sm-1 border-right"></span>
+            <span class="form-control ctrl col-sm-5 left border-noleft"></span>
+            <span class="form-control ctrl col-sm-2 singledouble"></span>
+            <span class="col-sm-2"></span>
+          </div>
+          <div class="area input-group jumbotron">
+            <span class="form-control ctrl col-sm-2 border-right"></span>
+            <span class="form-control ctrl col-sm-1 border-right"></span>
+            <span class="form-control ctrl col-sm-5 left border-noleft">PLUS 15% VAT ON FEES <i>after 1 April 2018</i> <b>(Subtotal on Fees R_____________)(A)</b></span>
+            <span class="form-control ctrl col-sm-2 singledouble bottomdouble"></span>
+            <span class="col-sm-2 border-no"></span>
+          </div>
+          <div class="area input-group jumbotron">
+            <span class="form-control ctrl col-sm-2 border-right"></span>
+            <span class="form-control ctrl col-sm-1 border-right"></span>
+            <span class="form-control ctrl col-sm-5 left border-noleft"></span>
+            <span class="form-control ctrl col-sm-2 singledouble"></span>
+            <span class="col-sm-2"></span>
+          </div>
+          <div class="area input-group jumbotron">
+            <span class="form-control ctrl col-sm-2 border-right"></span>
+            <span class="form-control ctrl col-sm-1 border-right"></span>
+            <span class="form-control ctrl col-sm-5 left border-noleft"></span>
+            <span class="form-control ctrl col-sm-2 singledouble"></span>
+            <span class="col-sm-2"></span>
+          </div>
+          <div class="area input-group jumbotron">
+            <span class="form-control ctrl col-sm-2 border-right"></span>
+            <span class="form-control ctrl col-sm-1 border-right"></span>
+            <span class="form-control ctrl col-sm-5 left border-noleft"><b>TOTAL DUE</b></span>
+            <span class="form-control ctrl col-sm-2 bottomdouble singledouble"></span>
+            <span class="col-sm-2 "></span>
+          </div>
+          <div class="area input-group jumbotron">
+            <span class="form-control ctrl col-sm-2 border-right"></span>
+            <span class="form-control ctrl col-sm-1 border-right"></span>
+            <span class="form-control ctrl col-sm-5 left border-noleft"></span>
+            <span class="form-control ctrl col-sm-2 singledouble"></span>
+            <span class="col-sm-2"></span>
+          </div>
+          <div class="area input-group jumbotron">
+            <span class="form-control ctrl col-sm-2 border-right"></span>
+            <span class="form-control ctrl col-sm-1 border-right"></span>
+            <span class="form-control ctrl col-sm-5 left border-noleft"></span>
+            <span class="form-control ctrl col-sm-2 singledouble"></span>
+            <span class="col-sm-2"></span>
+          </div>
+          <div class="area input-group jumbotron">
+            <span class="form-control ctrl col-sm-2 border-right"></span>
+            <span class="form-control ctrl col-sm-1 border-right"></span>
+            <span class="form-control ctrl col-sm-5 left border-noleft"></span>
+            <span class="form-control ctrl col-sm-2 singledouble"></span>
+            <span class="col-sm-2"></span>
+          </div>
+          <div class="area input-group jumbotron">
+            <span class="form-control ctrl col-sm-2 border-right"></span>
+            <span class="form-control ctrl col-sm-1 border-right"></span>
+            <span class="form-control ctrl col-sm-5 left border-noleft"></span>
+            <span class="form-control ctrl col-sm-2 singledouble"></span>
+            <span class="col-sm-2"></span>
+          </div>
+          <div class="area input-group jumbotron">
+            <span class="form-control ctrl col-sm-2 border-right"></span>
+            <span class="form-control ctrl col-sm-1 border-right"></span>
+            <span class="form-control ctrl col-sm-5 left border-noleft"><b>TAXED AND ALLOWED IN THE AMOUNT OF</b></span>
+            <span class="form-control ctrl col-sm-4 fullsingle"><label class=" center"><b>Case nr:</b></label><br style="clear:both;"/><label class=" center"><?php echo $caseNr; ?></label></span>
+          </div>
+          <div class="area input-group jumbotron">
+            <span class="form-control ctrl col-sm-2 border-right"></span>
+            <span class="form-control ctrl col-sm-1 border-right"></span>
+            <span class="form-control ctrl col-sm-5 left border-noleft">R__________________________</span>
+            <span class="form-control ctrl col-sm-2 singledouble"></span>
+            <span class="col-sm-2"></span>
+          </div>
+          <div class="area input-group jumbotron">
+            <span class="form-control ctrl col-sm-2 border-right"></span>
+            <span class="form-control ctrl col-sm-1 border-right"></span>
+            <span class="form-control ctrl col-sm-5 left border-noleft"></span>
+            <span class="form-control ctrl col-sm-2 singledouble"></span>
+            <span class="col-sm-2"></span>
+          </div>
+          <div class="area input-group jumbotron">
+            <span class="form-control ctrl col-sm-2 border-right"></span>
+            <span class="form-control ctrl col-sm-1 border-right"></span>
+            <span class="form-control ctrl col-sm-5 left border-noleft"></span>
+            <span class="form-control ctrl col-sm-2 singledouble"></span>
+            <span class="col-sm-2"></span>
+          </div>
+          <div class="area input-group jumbotron">
+            <span class="form-control ctrl col-sm-2 border-right"></span>
+            <span class="form-control ctrl col-sm-1 border-right"></span>
+            <span class="form-control ctrl col-sm-5 left border-noleft"></span>
+            <span class="form-control ctrl col-sm-2 singledouble"></span>
+            <span class="col-sm-2"></span>
+          </div>
+          <div class="area input-group jumbotron">
+            <span class="form-control ctrl col-sm-2 border-right"></span>
+            <span class="form-control ctrl col-sm-1 border-right"></span>
+            <span class="form-control ctrl col-sm-5 left bottomdouble border-noleft"></span>
+            <span class="form-control ctrl col-sm-2 singledouble"></span>
+            <span class="col-sm-2"></span>
+          </div>
+          <div class="area input-group jumbotron">
+            <span class="form-control ctrl col-sm-2 border-right"></span>
+            <span class="form-control ctrl col-sm-1 border-right"></span>
+            <span class="form-control ctrl col-sm-5 left border-noleft"><b>TAXING MASTER</b></span>
+            <span class="form-control ctrl col-sm-2 singledouble"></span>
+            <span class="col-sm-2"></span>
+          </div>
+    </div>
+		<!--<div class="area fullsingle fullmetal jumbotron">
+			<div class="left container fullleft">
+				<b><u><p>Settlement endorsement in terms of Rule 70 of the High Court Uniform Rules:</p></u></b>
+				<b><p>Settled between Pauline Pretorius abo __________________________________________________and</p></b>
+				<b><p> __________________________________________________from __________________________________________________</p></b>
+				<b><p>on this the ______ day of  _________________________ 2020.</p></b>
+				<b><p>Contact info of P Pretorius at PP Legal Cost Consultants CC - tel: 082 361 4086</p></b>
+				<b><p>Contact info of  __________________________________________________ at  __________________________________________________ -tel:</p></b>
+				<b><p> _________________________</p></b>
+			</div>
+		</div>-->
+		<br>
+		<form class="" action="genPdf.php" method="post">
+			<input id="case" name="case" class="hide" type="text" value="<?php echo $caseNr; ?>"/>
+			<div class="container">
+				<input id="genPdf" name="submit1" type="submit" class="btn btn-primary center" value="Generate PDF"/>
+			</div>
+		</form>
+		<br>
+		<form class="" action="generate_bill.php" method="POST">
+			<div class="container">
+				<input id="addIt" name="submitAdd" type="submit" class="btn btn-primary center" value="Add Items"/>
+				<input id="caseNr" name="caseNr" class="hide" type="text" value="<?php echo $caseNr; ?>"/>
+			</div>
+		</form>
+
+  <?php include('footer.php');?>
+</html>
